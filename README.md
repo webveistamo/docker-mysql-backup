@@ -34,8 +34,35 @@ docker run \
   -e AWS_SECRET_ACCESS_KEY=secret \
   -e BACKUP_INTERVAL=86400 \
   --name=mysql-backup \
-  --rm -d --link some-mysql:mysql \
+  -d --link some-mysql:mysql \
   watermarkchurch/mysql-backup
   s3://awsbucket/path/to/archive.tgz
 
+```
+
+### Managed with Systemd unit
+
+```
+[Unit]
+Description=MySQL Backup Container
+After=docker.service
+
+[Service]
+TimeoutStartSec=0
+Restart=on-failure
+ExecStartPre=-/usr/bin/docker kill mysql-backup
+ExecStartPre=-/usr/bin/docker rm mysql-backup
+ExecStartPre=-/usr/bin/docker pull watermarkchurch/mysql-backup
+ExecStart=/usr/bin/docker run \
+  -e AWS_ACCESS_KEY_ID=access_id \
+  -e AWS_SECRET_ACCESS_KEY=secret_key \
+  -e BACKUP_INTERVAL=86400 \
+  --link mysql:mysql \
+  --name=mysql-backup \
+  watermarkchurch/mysql-backup \
+  s3://bucketname/backups/mysql.tgz
+ExecStop=/usr/bin/docker stop mysql-backup
+
+[Install]
+WantedBy=multi-user.target
 ```
