@@ -2,7 +2,7 @@ FROM mysql:5
 MAINTAINER "Watermark Dev Team <dev@watermark.org>"
 
 RUN apt-get update -y -q && \
-  apt-get install -y python2.7 python-pip && \
+  apt-get install -y python2.7 python-pip curl && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 

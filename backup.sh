@@ -5,9 +5,6 @@
 : ${DB_HOST:="$MYSQL_PORT_3306_TCP_ADDR"}
 : ${S3_URL:=$1}
 
-workdir=/tmp/mysql
-output=/tmp/mysql.tgz
-
 if [[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]]
 then
   echo "You must provide both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in environment"
@@ -26,26 +23,33 @@ then
   exit 1
 fi
 
+if [ -z $CHECK_URL ]
+then
+  CHECK_COMMAND="true"
+else
+  CHECK_COMMAND="curl $CHECK_URL"
+fi
+
 mysql_creds="-u$DB_USER -p$DB_PASSWORD -h$DB_HOST"
+
+cd /tmp
 
 while [ 1 ]
 do
-  mkdir $workdir
-
   databases=$(mysql $mysql_creds --skip-column-names -e "show databases")
+
+  rm -r *.sql.gz
 
   for database in $databases
   do
     echo "Dumping $database"
-    mysqldump $mysql_creds $database > $workdir/$database.sql
+    mysqldump $mysql_creds $database > $database.sql
+    gzip $database.sql
   done
 
-  tar -czf $output $workdir
+  aws s3 cp /tmp/ $S3_URL/ --exclude "*" --include "*.sql.gz" --recursive && $CHECK_COMMAND
 
-  aws s3 cp $output $S3_URL
-
-  rm -rf $workdir
-  rm -f $output
+  rm -r *.sql.gz
 
   if [ -z $BACKUP_INTERVAL ]
   then
